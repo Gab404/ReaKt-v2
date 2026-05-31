@@ -1,0 +1,64 @@
+/home/gabriel/workspace/PI_LSTM/venv/lib/python3.10/site-packages/torch/cuda/__init__.py:611: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+========================================================================
+  Closed-Loop BPTT Fine-Tuning
+========================================================================
+  model             : neural_ode
+  pretrained ckpt   : checkpoints/neural_ode.pt
+  horizon           : 20  (val_horizon=20)
+  epochs            : 10
+  lr                : 0.0001
+  scheduled sampling: True
+  batch size        : 32
+  grad clip         : 5.0
+  es patience       : 5
+  device            : cuda
+  output            : checkpoints/neural_ode_finetuned.pt
+
+[1/5] Loading pretrained checkpoint ...
+  Algorithm class   : NeuralODEAlgorithm  (alg.name='neural_ode')
+  Trainable params  : 5,954
+  Feature columns   : 23  (23 process only)
+
+[2/5] Loading dataset ...
+  Reading ./100_Batches_IndPenSim_V3.csv ...
+  Raw shape: 113,935 rows × 26 columns
+  Detected 100 batches
+  Fault-free: 90  |  Faulty: 10
+  Train batches: 72   Val batches: 18
+
+[3/5] Building closed-loop datasets ...
+  Neural ODE  dt = 0.2
+  [Dataset/NODE]   8,136 segments  horizon=20  stride=10  n_ctrl=23
+  [Dataset/NODE]   2,006 segments  horizon=20  stride=10  n_ctrl=23
+
+[4/5] Building optimiser ...
+  Single param group: lr=1.0e-04
+
+[5/5] Fine-tuning ...
+    Ep     TF   train_loss    val_loss       Δval         lr     time
+  ───────────────────────────────────────────────────────────────────
+  ★  1/10  0.900     0.000000    0.000008       -inf   1.00e-04    48.4s
+     2/10  0.800     0.000000    0.000008   +0.00000   1.00e-04    65.9s
+  ★  3/10  0.700     0.000000    0.000007   -0.00000   1.00e-04    58.7s
+     4/10  0.600     0.000000    0.000011   +0.00000   1.00e-04    50.1s
+  ★  5/10  0.500     0.000002    0.000007   -0.00000   1.00e-04    47.7s
+     6/10  0.400     0.000001    0.000010   +0.00000   1.00e-04    56.3s
+     7/10  0.300     0.000005    0.000007   +0.00000   1.00e-04    67.9s
+     8/10  0.200     0.000007    0.000011   +0.00000   1.00e-04    68.6s
+     9/10  0.100     0.000011    0.000096   +0.00009   5.00e-05    68.4s
+    10/10  0.000     0.000010    0.000008   +0.00000   5.00e-05    66.2s
+
+  [Early Stop] No improvement for 5 epochs — stopped at epoch 10.
+
+  Best weights restored  (val_loss = 0.000007)
+
+  Fine-tuned checkpoint saved → checkpoints/neural_ode_finetuned.pt
+
+  Fine-tuning summary
+  ────────────────────────────────────────
+  Epochs run       : 10
+  Best val loss    : 0.000007
+  Train loss       : 0.000000 → 0.000010  (+4665.1 %)
+  Checkpoint       : checkpoints/neural_ode_finetuned.pt
+========================================================================

@@ -1,0 +1,86 @@
+/home/gabriel/workspace/PI_LSTM/venv/lib/python3.10/site-packages/torch/cuda/__init__.py:611: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+INFO:model:Building CDAE with input_length=2200, latent_dim=64
+INFO:model:Encoder progression: 2200 -> 1100 -> 550
+INFO:model:Flatten size: 35200
+/home/gabriel/workspace/PI_LSTM/simulator/indpensim_ode.py:286: RuntimeWarning: invalid value encountered in log10
+  pH_val = -np.log10(y[6] + 1e-10)
+/home/gabriel/workspace/PI_LSTM/simulator/indpensim_ode.py:526: RuntimeWarning: invalid value encountered in log10
+  if -np.log10(y[6] + 1e-12) < 7: # Acidic
+
+IndPenSim Simulator
+  model      : pi_lstm_raman
+  checkpoint : checkpoints/pi_lstm_raman_finetuned.pt
+  n_batches  : 3
+  faults     : [0, 1, 3]
+  mpc        : True  (horizon=20, steps=5, bio_weight=0.5)
+  knn_raman  : True
+  device     : cuda
+  seed       : 42
+  Loading checkpoint: checkpoints/pi_lstm_raman_finetuned.pt
+  Algorithm: pi_lstm  |  device: cuda
+
+Building KNN Raman selector ...
+[KNNRamanSelector] Loading cache from outputs/raman_knn_cache.npz ...
+[KNNRamanSelector] Cache loaded: 112,935 rows.
+
+Building MPC controller ...
+
+  Simulating batch 1 recipe baseline (fault=0) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -1186 Kg
+Final Penicillin yield at harvest 2613 Kg
+Total penicillin 3799 Kg
+  Simulating batch 1 with MPC control ...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+  MPC simulation done in 520.6s
+  Batch 1: Bio RMSE=4.8768  Pen RMSE=8.4809
+
+  Simulating batch 2 recipe baseline (fault=1) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -582 Kg
+Final Penicillin yield at harvest 601 Kg
+Total penicillin 1183 Kg
+  Simulating batch 2 with MPC control ...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+  MPC simulation done in 526.6s
+  Batch 2: Bio RMSE=4.3036  Pen RMSE=5.6089
+
+  Simulating batch 3 recipe baseline (fault=3) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -666 Kg
+Final Penicillin yield at harvest 837 Kg
+Total penicillin 1503 Kg
+  Simulating batch 3 with MPC control ...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+  MPC simulation done in 531.3s
+  Batch 3: Bio RMSE=4.4293  Pen RMSE=10.0693
+
+──────────────────────────────────────────────────────────────────────────────────────────
+Batch  Fault    Bio RMSE    Bio MAE    Pen RMSE    Pen MAE    [Recipe] Bio    [Recipe] Pen
+──────────────────────────────────────────────────────────────────────────────────────────
+    1      0      4.8768     4.5960      8.4809     7.0396          1.3841          1.1872
+    2      1      4.3036     4.1274      5.6089     3.8237          2.3547          3.2942
+    3      3      4.4293     4.2314     10.0693     7.6036          1.0595          1.8403
+──────────────────────────────────────────────────────────────────────────────────────────
+ MEAN      ─      4.5366          ─      8.0530          ─          1.5994          2.1072
+
+MPC vs Recipe penicillin yield comparison:
+  Batch    Pen RMSE (MPC)   Pen RMSE (recipe)      Gain
+      1            8.4809              1.1872   -614.3%
+      2            5.6089              3.2942    -70.3%
+      3           10.0693              1.8403   -447.2%
+
+  Plot saved → outputs/mpc_finetuned/h20/pi_lstm_raman/batch_001_pi_lstm_raman_fault0.png
+  Plot saved → outputs/mpc_finetuned/h20/pi_lstm_raman/batch_002_pi_lstm_raman_fault1.png
+  Plot saved → outputs/mpc_finetuned/h20/pi_lstm_raman/batch_003_pi_lstm_raman_fault3.png
+Done.

@@ -1,0 +1,38 @@
+# configs/neural_ode_raman.yaml
+# Neural ODE + Raman — 23 process features + 64 Raman latents = 87 features total
+
+name: neural_ode_raman
+
+data:
+  csv_path:        ./100_Batches_IndPenSim_V3.csv
+  feature_preset:  process_23
+  use_raman:       true
+  raman_ckpt:      ./checkpoints/cdae_best_model.pth
+  split_strategy:  sequential
+  train_frac:      0.80
+  seed:            42
+  min_len:         50
+
+model:
+  n_state:  2
+  hidden:   64
+  # n_ctrl is inferred at runtime: 23 + 64 = 87
+
+training:
+  seg_len:      50
+  seg_stride:   10
+  dt:           0.2
+  batch_size:   64
+  n_epochs:     150
+  lr:           1.0e-3
+  weight_decay: 1.0e-4
+  lr_factor:    0.5
+  lr_patience:  15
+  es_patience:  30
+  grad_clip:    5.0
+  train_solver: rk4
+  eval_solver:  dopri5
+
+output:
+  checkpoint: ./checkpoints/neural_ode_raman.pt
+  plots_dir:  ./outputs/neural_ode_raman/

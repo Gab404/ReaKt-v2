@@ -1,0 +1,41 @@
+# configs/neural_ode_v5.yaml
+# Neural ODE + CoAtNetFusion V5 Raman encoder — 23 process + 32 attention features = 55 total
+
+name: neural_ode_v5
+
+data:
+  csv_path:            ./100_Batches_IndPenSim_V3.csv
+  feature_preset:      process_23
+  use_raman:           true
+  raman_encoder_type:  v5
+  raman_ckpt:          ./checkpoints/reakt_coatnet_v5_best.pth
+  raman_scaler:        ./checkpoints/scaler_raman.pkl
+  raman_latent_dim:    32     # CoAtNetV5Encoder.FEATURE_DIM
+  split_strategy:      sequential
+  train_frac:          0.80
+  seed:                42
+  min_len:             50
+
+model:
+  n_state:  2
+  hidden:   64
+  # n_ctrl inferred at runtime: 23 + 32 = 55
+
+training:
+  seg_len:      50
+  seg_stride:   10
+  dt:           0.2
+  batch_size:   64
+  n_epochs:     150
+  lr:           1.0e-3
+  weight_decay: 1.0e-4
+  lr_factor:    0.5
+  lr_patience:  15
+  es_patience:  30
+  grad_clip:    5.0
+  train_solver: rk4
+  eval_solver:  dopri5
+
+output:
+  checkpoint: ./checkpoints/neural_ode_v5.pt
+  plots_dir:  ./outputs/neural_ode_v5/

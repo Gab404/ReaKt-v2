@@ -1,0 +1,65 @@
+/home/gabriel/workspace/PI_LSTM/venv/lib/python3.10/site-packages/torch/cuda/__init__.py:611: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+INFO:model:Building CDAE with input_length=2200, latent_dim=64
+INFO:model:Encoder progression: 2200 -> 1100 -> 550
+INFO:model:Flatten size: 35200
+
+IndPenSim Simulator
+  model      : neural_ode_raman
+  checkpoint : checkpoints/neural_ode_raman.pt
+  n_batches  : 3
+  faults     : [0, 1, 3]
+  mpc        : False
+  knn_raman  : True
+  device     : cuda
+  seed       : 42
+  Loading checkpoint: checkpoints/neural_ode_raman.pt
+  Algorithm: neural_ode  |  device: cuda
+
+Building KNN Raman selector ...
+[KNNRamanSelector] Loading cache from outputs/raman_knn_cache.npz ...
+[KNNRamanSelector] Cache loaded: 112,935 rows.
+
+  Simulating batch 1 (fault=0) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -1186 Kg
+Final Penicillin yield at harvest 2613 Kg
+Total penicillin 3799 Kg
+  Simulation done in 13.8s
+  Batch 1: Bio RMSE=1.1252  Pen RMSE=1.3037
+
+  Simulating batch 2 (fault=1) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -641 Kg
+Final Penicillin yield at harvest 676 Kg
+Total penicillin 1317 Kg
+  Simulation done in 15.1s
+  Batch 2: Bio RMSE=2.1382  Pen RMSE=2.9574
+
+  Simulating batch 3 (fault=3) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -965 Kg
+Final Penicillin yield at harvest 1645 Kg
+Total penicillin 2610 Kg
+  Simulation done in 14.0s
+  Batch 3: Bio RMSE=1.0194  Pen RMSE=1.2677
+
+──────────────────────────────────────────────────────────
+Batch  Fault    Bio RMSE    Bio MAE    Pen RMSE    Pen MAE
+──────────────────────────────────────────────────────────
+    1      0      1.1252     0.8064      1.3037     0.8726
+    2      1      2.1382     1.7189      2.9574     2.4041
+    3      3      1.0194     0.8771      1.2677     0.9295
+──────────────────────────────────────────────────────────
+ MEAN      ─      1.4276          ─      1.8430          ─
+
+  Plot saved → outputs/mpc_sweep/recipe/neural_ode_raman/batch_001_neural_ode_raman_fault0.png
+  Plot saved → outputs/mpc_sweep/recipe/neural_ode_raman/batch_002_neural_ode_raman_fault1.png
+  Plot saved → outputs/mpc_sweep/recipe/neural_ode_raman/batch_003_neural_ode_raman_fault3.png
+Done.

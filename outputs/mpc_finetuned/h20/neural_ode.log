@@ -1,0 +1,75 @@
+/home/gabriel/workspace/PI_LSTM/venv/lib/python3.10/site-packages/torch/cuda/__init__.py:611: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+
+IndPenSim Simulator
+  model      : neural_ode
+  checkpoint : checkpoints/neural_ode_finetuned.pt
+  n_batches  : 3
+  faults     : [0, 1, 3]
+  mpc        : True  (horizon=20, steps=5, bio_weight=0.5)
+  knn_raman  : False
+  device     : cuda
+  seed       : 42
+  Loading checkpoint: checkpoints/neural_ode_finetuned.pt
+  Algorithm: neural_ode  |  device: cuda
+
+Building MPC controller ...
+
+  Simulating batch 1 recipe baseline (fault=0) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -1186 Kg
+Final Penicillin yield at harvest 2613 Kg
+Total penicillin 3799 Kg
+  Simulating batch 1 with MPC control ...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+  MPC simulation done in 1421.0s
+  Batch 1: Bio RMSE=5.6559  Pen RMSE=17.2876
+
+  Simulating batch 2 recipe baseline (fault=1) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -1078 Kg
+Final Penicillin yield at harvest 2410 Kg
+Total penicillin 3487 Kg
+  Simulating batch 2 with MPC control ...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+  MPC simulation done in 1178.8s
+  Batch 2: Bio RMSE=5.6942  Pen RMSE=18.1226
+
+  Simulating batch 3 recipe baseline (fault=3) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -845 Kg
+Final Penicillin yield at harvest 1093 Kg
+Total penicillin 1938 Kg
+  Simulating batch 3 with MPC control ...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+  MPC simulation done in 1169.3s
+  Batch 3: Bio RMSE=5.5665  Pen RMSE=15.8389
+
+──────────────────────────────────────────────────────────────────────────────────────────
+Batch  Fault    Bio RMSE    Bio MAE    Pen RMSE    Pen MAE    [Recipe] Bio    [Recipe] Pen
+──────────────────────────────────────────────────────────────────────────────────────────
+    1      0      5.6559     5.0438     17.2876    11.6779          1.3253          4.9412
+    2      1      5.6942     5.1350     18.1226    12.2302          2.8334         14.5086
+    3      3      5.5665     4.9660     15.8389    10.4347          1.0989          3.2914
+──────────────────────────────────────────────────────────────────────────────────────────
+ MEAN      ─      5.6389          ─     17.0830          ─          1.7525          7.5804
+
+MPC vs Recipe penicillin yield comparison:
+  Batch    Pen RMSE (MPC)   Pen RMSE (recipe)      Gain
+      1           17.2876              4.9412   -249.9%
+      2           18.1226             14.5086    -24.9%
+      3           15.8389              3.2914   -381.2%
+
+  Plot saved → outputs/mpc_finetuned/h20/neural_ode/batch_001_neural_ode_fault0.png
+  Plot saved → outputs/mpc_finetuned/h20/neural_ode/batch_002_neural_ode_fault1.png
+  Plot saved → outputs/mpc_finetuned/h20/neural_ode/batch_003_neural_ode_fault3.png
+Done.

@@ -1,0 +1,48 @@
+# configs/pi_lstm_raman.yaml
+# PI-LSTM + Raman — 23 process features + 64 Raman latents = 87 features total
+
+name: pi_lstm_raman
+
+data:
+  csv_path:        ./100_Batches_IndPenSim_V3.csv
+  feature_preset:  process_23    # 23 columns; 64 Raman latents appended at runtime
+  use_raman:       true
+  raman_ckpt:      ./checkpoints/cdae_best_model.pth
+  split_strategy:  random
+  train_frac:      0.80
+  seed:            42
+  min_len:         50
+
+model:
+  hidden_size:      64
+  num_lstm_layers:  1
+  fc_hidden:        32
+  lstm_dropout:     0.0
+  r_n_init:         45.0
+  y_max_n_init:     1.05
+  alpha_n_init:     1.0
+  beta_n_init:      1.0
+  # input_size is inferred at runtime: len(process_23) + 64 = 87
+
+training:
+  seq_len:      24
+  dt:           0.2
+  batch_size:   64
+  n_epochs:     200
+  lr:           1.0e-3
+  lr_physics:   1.0e-2
+  weight_decay: 1.0e-4
+  lr_factor:    0.5
+  lr_patience:  15
+  es_patience:  30
+  grad_clip:    5.0
+  vanilla_mode:          false
+  lambda_physics_start:  0.0
+  lambda_physics_end:    0.1
+  lambda_anneal_delay:   30
+  lambda_anneal_epochs:  80
+  lambda_r_neg:          1.0
+
+output:
+  checkpoint: ./checkpoints/pi_lstm_raman.pt
+  plots_dir:  ./outputs/pi_lstm_raman/

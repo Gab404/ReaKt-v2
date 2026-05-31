@@ -1,0 +1,82 @@
+/home/gabriel/workspace/PI_LSTM/venv/lib/python3.10/site-packages/torch/cuda/__init__.py:611: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+INFO:model:Building CDAE with input_length=2200, latent_dim=64
+INFO:model:Encoder progression: 2200 -> 1100 -> 550
+INFO:model:Flatten size: 35200
+
+IndPenSim Simulator
+  model      : neural_ode_raman
+  checkpoint : checkpoints/neural_ode_raman.pt
+  n_batches  : 3
+  faults     : [0, 1, 3]
+  mpc        : True
+  knn_raman  : True
+  device     : cuda
+  seed       : 42
+  Loading checkpoint: checkpoints/neural_ode_raman.pt
+  Algorithm: neural_ode  |  device: cuda
+
+Building KNN Raman selector ...
+[KNNRamanSelector] Loading cache from outputs/raman_knn_cache.npz ...
+[KNNRamanSelector] Cache loaded: 112,935 rows.
+
+Building MPC controller ...
+
+  Simulating batch 1 recipe baseline (fault=0) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -1186 Kg
+Final Penicillin yield at harvest 2613 Kg
+Total penicillin 3799 Kg
+  Simulating batch 1 with MPC control ...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+  MPC simulation done in 509.4s
+  Batch 1: Bio RMSE=3.1568  Pen RMSE=5.8810
+
+  Simulating batch 2 recipe baseline (fault=1) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -762 Kg
+Final Penicillin yield at harvest 915 Kg
+Total penicillin 1677 Kg
+  Simulating batch 2 with MPC control ...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+  MPC simulation done in 489.9s
+  Batch 2: Bio RMSE=3.4914  Pen RMSE=5.9038
+
+  Simulating batch 3 recipe baseline (fault=3) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -350 Kg
+Final Penicillin yield at harvest 552 Kg
+Total penicillin 902 Kg
+  Simulating batch 3 with MPC control ...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+  MPC simulation done in 465.7s
+  Batch 3: Bio RMSE=2.1149  Pen RMSE=4.7759
+
+──────────────────────────────────────────────────────────────────────────────────────────
+Batch  Fault    Bio RMSE    Bio MAE    Pen RMSE    Pen MAE    [Recipe] Bio    [Recipe] Pen
+──────────────────────────────────────────────────────────────────────────────────────────
+    1      0      3.1568     3.1237      5.8810     5.1112          1.1252          1.3037
+    2      1      3.4914     3.4261      5.9038     4.8438          2.2190          2.7778
+    3      3      2.1149     2.0312      4.7759     3.6071          1.2208          3.0754
+──────────────────────────────────────────────────────────────────────────────────────────
+ MEAN      ─      2.9210          ─      5.5202          ─          1.5217          2.3857
+
+MPC vs Recipe penicillin yield comparison:
+  Batch    Pen RMSE (MPC)   Pen RMSE (recipe)      Gain
+      1            5.8810              1.3037   -351.1%
+      2            5.9038              2.7778   -112.5%
+      3            4.7759              3.0754    -55.3%
+
+  Plot saved → outputs/mpc_sweep/h5/neural_ode_raman/batch_001_neural_ode_raman_fault0.png
+  Plot saved → outputs/mpc_sweep/h5/neural_ode_raman/batch_002_neural_ode_raman_fault1.png
+  Plot saved → outputs/mpc_sweep/h5/neural_ode_raman/batch_003_neural_ode_raman_fault3.png
+Done.

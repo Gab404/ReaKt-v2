@@ -1,0 +1,65 @@
+/home/gabriel/workspace/PI_LSTM/venv/lib/python3.10/site-packages/torch/cuda/__init__.py:611: UserWarning: Can't initialize NVML
+  warnings.warn("Can't initialize NVML")
+INFO:model:Building CDAE with input_length=2200, latent_dim=64
+INFO:model:Encoder progression: 2200 -> 1100 -> 550
+INFO:model:Flatten size: 35200
+
+IndPenSim Simulator
+  model      : pi_lstm_raman
+  checkpoint : checkpoints/pi_lstm_raman.pt
+  n_batches  : 3
+  faults     : [0, 1, 3]
+  mpc        : False
+  knn_raman  : True
+  device     : cuda
+  seed       : 42
+  Loading checkpoint: checkpoints/pi_lstm_raman.pt
+  Algorithm: pi_lstm  |  device: cuda
+
+Building KNN Raman selector ...
+[KNNRamanSelector] Loading cache from outputs/raman_knn_cache.npz ...
+[KNNRamanSelector] Cache loaded: 112,935 rows.
+
+  Simulating batch 1 (fault=0) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -1186 Kg
+Final Penicillin yield at harvest 2613 Kg
+Total penicillin 3799 Kg
+  Simulation done in 14.0s
+  Batch 1: Bio RMSE=1.3428  Pen RMSE=1.1980
+
+  Simulating batch 2 (fault=1) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -641 Kg
+Final Penicillin yield at harvest 676 Kg
+Total penicillin 1317 Kg
+  Simulation done in 15.2s
+  Batch 2: Bio RMSE=2.3471  Pen RMSE=2.7350
+
+  Simulating batch 3 (fault=3) ...
+Running IndPenSim (Python)...
+Démarrage simulation IndPenSim (N=1150 pas)...
+Simulation terminée.
+Penicillin harvested during the batch -965 Kg
+Final Penicillin yield at harvest 1645 Kg
+Total penicillin 2610 Kg
+  Simulation done in 13.8s
+  Batch 3: Bio RMSE=1.2992  Pen RMSE=1.4556
+
+──────────────────────────────────────────────────────────
+Batch  Fault    Bio RMSE    Bio MAE    Pen RMSE    Pen MAE
+──────────────────────────────────────────────────────────
+    1      0      1.3428     1.0633      1.1980     0.9876
+    2      1      2.3471     1.2729      2.7350     2.1527
+    3      3      1.2992     1.0411      1.4556     1.1022
+──────────────────────────────────────────────────────────
+ MEAN      ─      1.6631          ─      1.7962          ─
+
+  Plot saved → outputs/mpc_sweep/recipe/pi_lstm_raman/batch_001_pi_lstm_raman_fault0.png
+  Plot saved → outputs/mpc_sweep/recipe/pi_lstm_raman/batch_002_pi_lstm_raman_fault1.png
+  Plot saved → outputs/mpc_sweep/recipe/pi_lstm_raman/batch_003_pi_lstm_raman_fault3.png
+Done.
