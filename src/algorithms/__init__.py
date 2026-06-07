@@ -9,8 +9,9 @@ Importing this package triggers the registration of all algorithm subclasses.
 from src.algorithms.base import REGISTRY, BaseAlgorithm, ScalerBundle  # noqa: F401
 
 # Import subclasses — side-effect: each registers itself in REGISTRY
-from src.algorithms.pi_lstm   import PILSTMAlgorithm   # noqa: F401
-from src.algorithms.neural_ode import NeuralODEAlgorithm  # noqa: F401
+from src.algorithms.pi_lstm    import PILSTMAlgorithm    # noqa: F401
+from src.algorithms.neural_ode import NeuralODEAlgorithm # noqa: F401
+from src.algorithms.cdae_pi_lstm import CDAEPILSTMAlgorithm  # noqa: F401
 
 # Raman variants reuse the same classes but with different config keys
 # (use_raman=true in their YAML), so they share the same REGISTRY name with
@@ -35,7 +36,7 @@ def get_algorithm(name: str) -> type:
     name : str
         One of: ``"pi_lstm"``, ``"pi_lstm_raman"``, ``"pi_lstm_v4"``,
         ``"pi_lstm_v5"``, ``"neural_ode"``, ``"neural_ode_raman"``,
-        ``"neural_ode_v4"``, ``"neural_ode_v5"``
+        ``"neural_ode_v4"``, ``"neural_ode_v5"``, ``"cdae_pi_lstm"``
 
     Raises
     ------
@@ -55,5 +56,6 @@ __all__ = [
     "ScalerBundle",
     "PILSTMAlgorithm",
     "NeuralODEAlgorithm",
+    "CDAEPILSTMAlgorithm",
     "get_algorithm",
 ]

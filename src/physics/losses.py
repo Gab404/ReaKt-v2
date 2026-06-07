@@ -6,6 +6,9 @@ Physics-informed loss functions for the Logi-PINN model.
 The physics regulariser enforces two ODEs:
   - Logistic growth (biomass):   ΔX ≈ r · X · (1 − X/X_max) · Δt
   - Luedeking-Piret (penicillin): ΔP ≈ α · ΔX + β · X · Δt
+
+compute_cdae_pinn_loss  — loss for the CDAE-PI-LSTM (Penicillin-only,
+simplified mass-balance physics: ΔP ≈ k_prod · r_net · Δt)
 """
 
 from __future__ import annotations
@@ -96,5 +99,80 @@ def compute_pinn_loss(
         "loss_phys":  float((lambda_physics * l_physics).item()),
         "loss_bio":   float(l_phys_bio.item()),
         "loss_pen":   float(l_phys_pen.item()),
+    }
+    return loss, loss_dict
+
+
+# ── ─────────────────────────────────────────────────────────────────────────
+# CDAE-PI-LSTM loss  (Penicillin-only, simplified mass-balance physics)
+# ── ─────────────────────────────────────────────────────────────────────────
+
+def compute_cdae_pinn_loss(
+    model,                  # CDAEPILSTMModel — provides model.k_prod
+    pred:           torch.Tensor,   # (B, T, 2)  [:,:,0]=pen_norm  [:,:,1]=r_net
+    y_pen_norm:     torch.Tensor,   # (B, T)     normalised Penicillin targets
+    dt_n:           float,          # normalised time step
+    lambda_physics: float = 0.0,
+) -> Tuple[torch.Tensor, Dict[str, float]]:
+    """
+    Physics-Informed loss for the CDAE-PI-LSTM.
+
+    The model outputs TWO values per time step:
+      pen_norm  — predicted normalised Penicillin concentration  (Sigmoid, ∈(0,1))
+      r_net     — predicted net volumetric production rate       (unbounded)
+
+    Loss components
+    ---------------
+    Data loss   : MSE(pen_norm_pred, y_pen_norm)          (NaN-masked)
+    Physics loss: MSE(ΔP_pred, k_prod · r_net · dt_n)
+
+      The physics loss enforces the simplified penicillin mass balance:
+          dP/dt ≈ k_prod · r_net
+      where k_prod is a learnable positive scale factor (Softplus-constrained).
+      This makes the LSTM self-consistent: the predicted concentration
+      trajectory must agree with the predicted rate of change.
+
+    Parameters
+    ----------
+    model          : CDAEPILSTMModel (duck-typed for k_prod attribute)
+    pred           : (B, T, 2) model output
+    y_pen_norm     : (B, T) normalised penicillin targets
+    dt_n           : normalised time step (dt_physical / time_range)
+    lambda_physics : weight for physics residual term
+
+    Returns
+    -------
+    loss      : scalar total loss
+    loss_dict : breakdown dict for logging
+    """
+    pen_pred = pred[:, :, 0]   # (B, T)  predicted pen_norm
+    r_net    = pred[:, :, 1]   # (B, T)  predicted production rate
+
+    # ── Data loss (NaN-masked) ────────────────────────────────────────────────
+    valid_pen = ~torch.isnan(y_pen_norm)
+    l_data = (
+        F.mse_loss(pen_pred[valid_pen], y_pen_norm[valid_pen])
+        if valid_pen.any()
+        else pred.new_tensor(0.0)
+    )
+
+    # ── Physics residual — simplified mass balance ────────────────────────────
+    # ΔP_pred (finite difference) must equal k_prod · r_net · dt_n
+    # This enforces temporal self-consistency between the two model outputs.
+    if lambda_physics > 0.0:
+        k_prod   = model.k_prod                                      # scalar ≥ 0
+        dP_nn    = pen_pred[:, 1:] - pen_pred[:, :-1]               # (B, T-1)
+        dP_phy   = k_prod * r_net[:, :-1] * dt_n                    # (B, T-1)
+        l_phys   = F.mse_loss(dP_nn, dP_phy)
+    else:
+        l_phys   = pred.new_tensor(0.0)
+
+    loss = l_data + lambda_physics * l_phys
+
+    loss_dict = {
+        "loss":       float(loss.item()),
+        "loss_data":  float(l_data.item()),
+        "loss_phys":  float((lambda_physics * l_phys).item()),
+        "k_prod":     float(model.k_prod.item()),
     }
     return loss, loss_dict

@@ -50,7 +50,8 @@ def _resolve_config_path(model_name: str) -> Path:
     if not p.exists():
         raise FileNotFoundError(
             f"Config not found: {p}\n"
-            f"Expected one of: pi_lstm, pi_lstm_raman, neural_ode, neural_ode_raman"
+            f"Expected one of: pi_lstm, pi_lstm_raman, neural_ode, "
+            f"neural_ode_raman, cdae_pi_lstm"
         )
     return p
 
@@ -76,6 +77,29 @@ def _maybe_build_raman_encoder(cfg, device: torch.device):
         from src.data.raman_encoder import RamanEncoder
         print(f"  Loading CDAE RamanEncoder from {ckpt_path} ...")
         return RamanEncoder(ckpt_path, device)
+
+    elif enc_type == "cdae_v2":
+        # New CDAE trained with SG(d=1) + StandardScaler preprocessing
+        if ckpt_path is None:
+            ckpt_path = "./checkpoints/cdae_best.pt"
+        if scaler_path is None:
+            scaler_path = "./checkpoints/cdae_scaler.joblib"
+        if not Path(ckpt_path).exists():
+            raise FileNotFoundError(
+                f"CDAE-V2 checkpoint not found: {ckpt_path}\n"
+                "Run train_autoencoder.py --model cdae first."
+            )
+        if not Path(scaler_path).exists():
+            raise FileNotFoundError(
+                f"CDAE-V2 scaler not found: {scaler_path}\n"
+                "Run train_autoencoder.py --model cdae first."
+            )
+        from src.data.cdae_encoder import CDAERamanEncoderV2
+        print(
+            f"  Loading CDAERamanEncoderV2 from {ckpt_path} "
+            f"(scaler: {scaler_path}) ..."
+        )
+        return CDAERamanEncoderV2(ckpt_path, scaler_path, device)
 
     elif enc_type == "v4":
         if ckpt_path is None:
@@ -110,6 +134,7 @@ def main() -> None:
         choices=[
             "pi_lstm", "pi_lstm_raman", "pi_lstm_v4", "pi_lstm_v5",
             "neural_ode", "neural_ode_raman", "neural_ode_v4", "neural_ode_v5",
+            "cdae_pi_lstm",
         ],
         help="Which model variant to train.",
     )
