@@ -26,39 +26,17 @@ All Raman encoders are **frozen** during training — only the downstream model 
 
 ## Results
 
-Evaluated on the 10 faulty hold-out batches (test set) and 18 fault-free validation batches.
+Penicillin concentration prediction from Raman spectra only (IndPenSim V3).
+Evaluated on 18 fault-free validation batches and 10 faulty hold-out batches.
+Metrics computed exclusively at sparse offline laboratory measurement points (~20 per batch).
 
-### Validation (fault-free batches)
-
-| Model | Bio RMSE (g/L) | Bio R² | Pen RMSE (g/L) | Pen R² |
-|---|---|---|---|---|
-| `pi_lstm` | 0.317 | 0.9971 | 1.558 | 0.9765 |
-| `pi_lstm_raman` | 0.100 | 0.9997 | 0.321 | 0.9990 |
-| `pi_lstm_v4` | 0.109 | 0.9997 | 0.106 | 0.9999 |
-| `pi_lstm_v5` | **0.095** | **0.9997** | 0.132 | 0.9998 |
-| `neural_ode` | 0.223 | 0.9990 | 2.218 | 0.9574 |
-| `neural_ode_raman` | 0.254 | 0.9987 | 1.003 | 0.9913 |
-| `neural_ode_v4` | 0.194 | 0.9992 | **0.123** | **0.9999** |
-| `neural_ode_v5` | 0.147 | 0.9996 | 0.134 | 0.9998 |
-
-### Test (10 faulty batches, unseen)
-
-| Model | Bio RMSE (g/L) | Bio R² | Pen RMSE (g/L) | Pen R² |
-|---|---|---|---|---|
-| `pi_lstm` | 1.233 | 0.9507 | 1.629 | 0.9641 |
-| `pi_lstm_raman` | 0.986 | 0.9685 | 0.698 | 0.9934 |
-| `pi_lstm_v4` | 0.989 | 0.9683 | **0.391** | **0.9979** |
-| `pi_lstm_v5` | **0.848** | **0.9767** | 0.764 | 0.9921 |
-| `neural_ode` | 1.551 | 0.9443 | 3.211 | 0.8642 |
-| `neural_ode_raman` | 1.096 | 0.9722 | 1.980 | 0.9484 |
-| `neural_ode_v4` | 2.024 | 0.9051 | 0.316 | 0.9987 |
-| `neural_ode_v5` | 1.560 | 0.9436 | 0.510 | 0.9966 |
-
-**Key takeaways:**
-- `pi_lstm_v4` achieves the best penicillin test RMSE (0.391 g/L, −44 % vs CDAE baseline) thanks to the V4 encoder being trained to predict penicillin from Raman.
-- `pi_lstm_v5` achieves the best biomass test RMSE (0.848 g/L) with only 32 latent dimensions.
-- Neural ODE + V4 suffers a large val→test gap on biomass (0.194 → 2.024 g/L), suggesting the 512-d input causes overfitting on that target.
-- PI-LSTM generalises more robustly across all encoder variants than Neural ODE.
+| Model | Type | FF-val RMSE (g/L) | Fault RMSE mean (g/L) |
+|---|---|---|---|
+| PLS (10-fold RMSECV baseline) | Linear, Static | 0.2440 | 0.2561 |
+| SVR | Non-linear, Static | 0.2399 | 0.2708 |
+| CDAE-LSTM (vanilla) | Non-linear, Temporal | 0.0772 | 0.1306 |
+| CDAE-PI-LSTM (LP-ODE) | Physics + Temporal | 0.0773 | 0.1268 |
+| CDAE-GreyBox-PI-LSTM (Mass Bal.) | Physics + Temporal | **0.0812** | **0.1244** |
 
 ---
 
