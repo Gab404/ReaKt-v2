@@ -16,7 +16,7 @@
 name: cdae_pi_lstm
 
 data:
-  csv_path:         C:\Users\gabri\Desktop\ReaKt_Genopole\100_Batches_IndPenSim_V3.csv
+  csv_path:         ./100_Batches_IndPenSim_V3.csv
   use_raman:        true
   raman_encoder_type: cdae_v2              # selects CDAERamanEncoderV2
   raman_ckpt:       ./checkpoints/cdae_best.pt

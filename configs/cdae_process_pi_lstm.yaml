@@ -1,0 +1,70 @@
+# configs/cdae_process_pi_lstm.yaml
+# ==================================
+# CDAE-Process-PI-LSTM: Physics-Informed LSTM driven by the concatenation of
+#   - 64-dim frozen CDAE Raman latent vector
+#   - 23 process state variables (temperature, pH, dissolved O2, substrate,
+#     aeration rate, feed rates, vessel volume, off-gas CO2/O2, OUR, CER, …)
+#
+# Total LSTM input dimension: 87  (64 Raman + 23 process)
+#
+# Input pipeline:
+#   raw Raman (2001D) → SG(d=1,w=15,p=2) → StandardScaler
+#   → frozen CDAE encoder → 64D latent
+#   }
+#   } → joint MinMaxScaler → 87D → LSTM
+#   }
+#   process vars (23D) ──────────────/
+#
+# Physics loss: ΔP ≈ k_prod · r_net · dt  (same as cdae_pi_lstm)
+#
+# Benchmark split: random seed=42, 72 train / 18 FF-val / 10 fault-test
+# Evaluation metric: sparse offline measurement points only (≈20/batch)
+
+name: cdae_process_pi_lstm
+
+data:
+  csv_path:           ./100_Batches_IndPenSim_V3.csv
+  use_raman:          true
+  raman_encoder_type: cdae_v2
+  raman_ckpt:         ./checkpoints/cdae_best.pt
+  raman_scaler:       ./checkpoints/cdae_scaler.joblib
+  raman_latent_dim:   64
+
+  split_strategy:   random
+  train_frac:       0.80
+  seed:             42
+  min_len:          50
+
+model:
+  hidden_size:      64
+  num_lstm_layers:  2
+  fc_hidden:        32
+  lstm_dropout:     0.2
+  k_prod_init:      1.0
+
+training:
+  seq_len:      24
+  dt:           0.2
+  batch_size:   64
+  n_epochs:     200
+
+  lr:           1.0e-3
+  lr_physics:   1.0e-2
+  weight_decay: 1.0e-4
+
+  lr_factor:    0.5
+  lr_patience:  15
+
+  es_patience:  30
+
+  grad_clip:    5.0
+
+  vanilla_mode:          false
+  lambda_physics_start:  0.0
+  lambda_physics_end:    0.1
+  lambda_anneal_delay:   30
+  lambda_anneal_epochs:  80
+
+output:
+  checkpoint: ./checkpoints/cdae_process_pi_lstm.pt
+  plots_dir:  ./outputs/cdae_process_pi_lstm/

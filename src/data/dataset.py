@@ -84,9 +84,12 @@ class PenicillinDataModule:
           csv_path      : path to the CSV file
           [use_raman]   : bool, default False
           [min_len]     : int, minimum rows per batch to keep (default 50)
-    raman_encoder : RamanEncoder, optional
-        If provided and cfg.use_raman is True, Raman latents are encoded and
-        attached as columns ``_raman_0`` … ``_raman_63``.
+    raman_encoder : object, optional
+        Any object exposing ``encode_dataframe(df) -> np.ndarray[N, latent_dim]``
+        (CDAERamanEncoderV2, CVAERamanEncoderV2, PCARamanEncoderV1,
+        PLSRamanEncoderV1).  If provided and ``cfg.use_raman`` is True,
+        Raman latents are encoded once and attached as columns
+        ``_raman_0`` … ``_raman_{latent_dim-1}``.
     """
 
     def __init__(self, cfg, raman_encoder=None):
@@ -125,7 +128,7 @@ class PenicillinDataModule:
             print("  Encoding Raman spectra ...")
             latents = self._raman_encoder.encode_dataframe(df)   # (N, latent_dim)
             # Derive column names from the actual encoder output dimension so that
-            # CDAE (64-d), V4-CNN (512-d), and V5-CoAtNet (32-d) all work without
+            # all encoders (PCA / PLS K-d, CDAE / CVAE 64-d, ...) work without
             # any hardcoded constant.
             n_latent = latents.shape[1]
             self._raman_latent_cols = [f"_raman_{i}" for i in range(n_latent)]

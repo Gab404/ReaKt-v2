@@ -55,6 +55,7 @@ from scipy.signal import savgol_filter
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.model_selection import GroupKFold, KFold, cross_val_predict
 from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.preprocessing import StandardScaler
 
 # ── Project imports (add repo root to sys.path when running as a script) ──────
 ROOT = Path(__file__).resolve().parent
@@ -101,6 +102,12 @@ MIN_BATCH_LEN: int = 50
 # Output paths
 OUTPUT_DIR:      Path = Path("./outputs/pls_baseline")
 CHECKPOINT_PATH: Path = Path("./checkpoints/pls_baseline.joblib")
+
+# Encoder artefacts -- consumed by src/data/pls_encoder.PLSRamanEncoderV1
+# Saved as a parallel pair (PLS + StandardScaler) so PLS-PI-LSTM can use the
+# fitted PLS as a frozen Raman encoder, mirroring the CDAE/CVAE/PCA pattern.
+PLS_MODEL_PATH:  Path = Path("./checkpoints/pls_best.joblib")
+PLS_SCALER_PATH: Path = Path("./checkpoints/pls_scaler.joblib")
 
 
 # ── ─────────────────────────────────────────────────────────────────────────
@@ -433,6 +440,70 @@ def save_model(
     print(f"\n[SAVE]  Model saved to {path}")
 
 
+def save_encoder_artefacts(
+    X_train:     np.ndarray,
+    y_train:     np.ndarray,
+    pls_path:    Path = PLS_MODEL_PATH,
+    scaler_path: Path = PLS_SCALER_PATH,
+    n_components: int = None,
+) -> None:
+    """
+    Persist a StandardScaler + bare PLSRegression pair so the fitted PLS can
+    be reused as a frozen Raman encoder by the downstream PLS-PI-LSTM model
+    (loaded via ``src/data/pls_encoder.PLSRamanEncoderV1``).
+
+    Why a parallel fit?
+    -------------------
+    The static baseline (saved to CHECKPOINT_PATH) uses
+    ``PLSRegression(n_components=K, scale=True)`` which standardises X and y
+    internally. The frozen encoder pattern (PLSRamanEncoderV1) expects an
+    EXTERNAL StandardScaler followed by ``PLSRegression(scale=False)`` so the
+    preprocessing pipeline is explicit and reproducible. The two
+    parameterisations are mathematically equivalent on the X side; we refit
+    here so the on-disk artefacts match the encoder's expected I/O contract.
+
+    File layout (mirrors cdae_best.pt + cdae_scaler.joblib convention)
+    -------------------------------------------------------------------
+      ``./checkpoints/pls_best.joblib``   -- sklearn.cross_decomposition.PLSRegression
+      ``./checkpoints/pls_scaler.joblib`` -- sklearn.preprocessing.StandardScaler
+
+    Parameters
+    ----------
+    X_train      : (n_samples, n_raman) -- SG-preprocessed training spectra
+    y_train      : (n_samples,)         -- Penicillin concentration (g/L)
+    pls_path     : output path for the bare PLSRegression
+    scaler_path  : output path for the fitted StandardScaler
+    n_components : number of PLS components (defaults to global N_COMPONENTS)
+    """
+    if n_components is None:
+        n_components = N_COMPONENTS
+
+    pls_path    = Path(pls_path)
+    scaler_path = Path(scaler_path)
+    pls_path.parent.mkdir(parents=True,    exist_ok=True)
+    scaler_path.parent.mkdir(parents=True, exist_ok=True)
+
+    print(f"\n[ENCODER]  Fitting StandardScaler + PLSRegression(n_components={n_components}, scale=False) "
+          f"for PLSRamanEncoderV1 ...")
+
+    # 1. Fit StandardScaler on SG-preprocessed training spectra
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X_train)
+
+    # 2. Fit PLSRegression(scale=False) on standardised X (equivalent to
+    #    PLSRegression(scale=True) on raw X, but with explicit upstream scaler)
+    pls_enc = PLSRegression(n_components=n_components, scale=False)
+    pls_enc.fit(X_scaled, y_train)
+
+    # 3. Save both artefacts
+    joblib.dump(pls_enc, pls_path,    compress=3)
+    joblib.dump(scaler,  scaler_path, compress=3)
+
+    print(f"[SAVE]  PLS encoder artefact saved to    {pls_path}")
+    print(f"[SAVE]  PLS encoder scaler saved to       {scaler_path}")
+    print(f"        (these are loaded by PLSRamanEncoderV1 for PLS-PI-LSTM)")
+
+
 def load_model(path: Path = CHECKPOINT_PATH) -> Tuple[PLSRegression, Dict]:
     """
     Load a previously saved PLS model.
@@ -669,6 +740,9 @@ def main(csv_path: str = CSV_PATH) -> None:
     }
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     save_model(pls, CHECKPOINT_PATH, metadata)
+
+    # ── 10. Save encoder artefacts (consumed by PLS-PI-LSTM) ─────────────────
+    save_encoder_artefacts(X_train, y_train, PLS_MODEL_PATH, PLS_SCALER_PATH)
 
 
 # ── CLI entry-point ──────────────────────────────────────────────────────────

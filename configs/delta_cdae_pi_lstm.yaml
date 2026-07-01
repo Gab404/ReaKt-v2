@@ -1,0 +1,66 @@
+# configs/delta_cdae_pi_lstm.yaml
+# ================================
+# Delta-CDAE-PI-LSTM: Physics-Informed LSTM that predicts the *increment*
+# of Penicillin concentration (ΔP = P[t] − P[t−1]) instead of the absolute
+# value P[t].  The frozen CDAE Raman encoder is identical to cdae_pi_lstm.
+#
+# Input pipeline:
+#   raw Raman (2001D) → SG(d=1, w=15, p=2) → StandardScaler
+#   → frozen CDAE encoder → 64D latent → MinMaxScaler → LSTM
+#
+# The model predicts [delta_pen_norm, r_net] and directly enforces:
+#   ΔP_norm ≈ k_prod · r_net · dt   (direct mass balance, no finite-diff)
+#
+# Evaluation: reconstruct P[t] by cumsum from a one-time anchor at
+# t = seq_len−2 (actual pen_norm value); metrics computed at sparse points.
+#
+# Benchmark split: random seed=42, 72 train / 18 FF-val / 10 fault-test
+
+name: delta_cdae_pi_lstm
+
+data:
+  csv_path:         ./100_Batches_IndPenSim_V3.csv
+  use_raman:        true
+  raman_encoder_type: cdae_v2
+  raman_ckpt:       ./checkpoints/cdae_best.pt
+  raman_scaler:     ./checkpoints/cdae_scaler.joblib
+  raman_latent_dim: 64
+
+  split_strategy:   random
+  train_frac:       0.80
+  seed:             42
+  min_len:          50
+
+model:
+  hidden_size:      64
+  num_lstm_layers:  2
+  fc_hidden:        32
+  lstm_dropout:     0.2
+  k_prod_init:      1.0
+
+training:
+  seq_len:      24
+  dt:           0.2
+  batch_size:   64
+  n_epochs:     200
+
+  lr:           1.0e-3
+  lr_physics:   1.0e-2
+  weight_decay: 1.0e-4
+
+  lr_factor:    0.5
+  lr_patience:  15
+
+  es_patience:  30
+
+  grad_clip:    5.0
+
+  vanilla_mode:          false
+  lambda_physics_start:  0.0
+  lambda_physics_end:    0.1
+  lambda_anneal_delay:   30
+  lambda_anneal_epochs:  80
+
+output:
+  checkpoint: ./checkpoints/delta_cdae_pi_lstm.pt
+  plots_dir:  ./outputs/delta_cdae_pi_lstm/

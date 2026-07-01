@@ -2,14 +2,21 @@
 """
 train.py
 ========
-CLI entry point for training any of the four PI-LSTM / Neural ODE variants.
+CLI entry point for training any benchmark temporal model.
+
+Available models
+----------------
+    pi_lstm          PI-LSTM, 23 process features only
+    neural_ode       Neural ODE, 23 process features only
+    cdae_pi_lstm     PI-LSTM, 23 process feats + 64 CDAE Raman latents
+    cvae_pi_lstm     PI-LSTM, 23 process feats + 64 CVAE Raman latents
+    pca_pi_lstm      PI-LSTM, 23 process feats +  4 PCA Raman latents
+    pls_pi_lstm      PI-LSTM, 23 process feats +  4 PLS Raman latents
 
 Usage
 -----
     python train.py --model pi_lstm
-    python train.py --model pi_lstm_raman
-    python train.py --model neural_ode
-    python train.py --model neural_ode_raman
+    python train.py --model cdae_pi_lstm
 
     # Override epochs and checkpoint path at the command line:
     python train.py --model pi_lstm --epochs 2 --ckpt /tmp/test.pt
@@ -43,6 +50,13 @@ def _set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
+MODEL_NAMES = [
+    "pi_lstm", "neural_ode",
+    "cdae_pi_lstm", "cvae_pi_lstm", "pca_pi_lstm", "pls_pi_lstm",
+    "delta_cdae_pi_lstm", "cdae_process_pi_lstm",
+]
+
+
 def _resolve_config_path(model_name: str) -> Path:
     """Return path to configs/<model_name>.yaml, raising if not found."""
     root = Path(__file__).parent
@@ -50,92 +64,123 @@ def _resolve_config_path(model_name: str) -> Path:
     if not p.exists():
         raise FileNotFoundError(
             f"Config not found: {p}\n"
-            f"Expected one of: pi_lstm, pi_lstm_raman, neural_ode, "
-            f"neural_ode_raman, cdae_pi_lstm"
+            f"Expected one of: {', '.join(MODEL_NAMES)}"
         )
     return p
 
 
 def _maybe_build_raman_encoder(cfg, device: torch.device):
-    """Return the appropriate frozen Raman encoder, or None if use_raman=False."""
+    """
+    Return the appropriate frozen Raman encoder, or ``None`` if
+    ``use_raman=False`` in the config.
+
+    Supported ``raman_encoder_type`` values
+    ----------------------------------------
+        cdae_v2  -> src.data.cdae_encoder.CDAERamanEncoderV2  (64-d)
+        cvae_v2  -> src.data.cvae_encoder.CVAERamanEncoderV2  (64-d, posterior mean)
+        pca_v2   -> src.data.pca_encoder.PCARamanEncoderV1    (K-d, fit by pca_baseline.py)
+        pls_v2   -> src.data.pls_encoder.PLSRamanEncoderV1    (K-d, fit by pls_baseline.py)
+
+    All four share the SAME preprocessing pipeline:
+        Savitzky-Golay first derivative (window=15, polyorder=2)
+        -> StandardScaler.transform()
+        -> frozen encoder
+    """
     use_raman = cfg.data.get("use_raman", False)
     if not use_raman:
         return None
 
-    enc_type    = cfg.data.get("raman_encoder_type", "cdae")
+    enc_type    = cfg.data.get("raman_encoder_type", None)
     ckpt_path   = cfg.data.get("raman_ckpt",   None)
-    scaler_path = cfg.data.get("raman_scaler",  None)
+    scaler_path = cfg.data.get("raman_scaler", None)
 
-    if enc_type == "cdae":
-        if ckpt_path is None:
-            ckpt_path = "./checkpoints/cdae_best_model.pth"
+    if enc_type == "cdae_v2":
+        ckpt_path   = ckpt_path   or "./checkpoints/cdae_best.pt"
+        scaler_path = scaler_path or "./checkpoints/cdae_scaler.joblib"
+        if not Path(ckpt_path).exists():
+            raise FileNotFoundError(f"CDAE-V2 checkpoint not found: {ckpt_path}")
+        if not Path(scaler_path).exists():
+            raise FileNotFoundError(f"CDAE-V2 scaler not found: {scaler_path}")
+        from src.data.cdae_encoder import CDAERamanEncoderV2
+        print(f"  Loading CDAERamanEncoderV2 from {ckpt_path}  (scaler: {scaler_path}) ...")
+        return CDAERamanEncoderV2(ckpt_path, scaler_path, device)
+
+    if enc_type == "cvae_v2":
+        ckpt_path   = ckpt_path   or "./checkpoints/cvae_best.pt"
+        scaler_path = scaler_path or "./checkpoints/cvae_scaler.joblib"
+        if not Path(ckpt_path).exists():
+            raise FileNotFoundError(f"CVAE-V2 checkpoint not found: {ckpt_path}")
+        if not Path(scaler_path).exists():
+            raise FileNotFoundError(f"CVAE-V2 scaler not found: {scaler_path}")
+        from src.data.cvae_encoder import CVAERamanEncoderV2
+        print(f"  Loading CVAERamanEncoderV2 from {ckpt_path}  (scaler: {scaler_path}) ...")
+        return CVAERamanEncoderV2(ckpt_path, scaler_path, device)
+
+    if enc_type == "pca_v2":
+        ckpt_path   = ckpt_path   or "./checkpoints/pca_best.joblib"
+        scaler_path = scaler_path or "./checkpoints/pca_scaler.joblib"
         if not Path(ckpt_path).exists():
             raise FileNotFoundError(
-                f"CDAE checkpoint not found: {ckpt_path}\n"
-                "Set data.raman_ckpt in the config or train the CDAE first."
-            )
-        from src.data.raman_encoder import RamanEncoder
-        print(f"  Loading CDAE RamanEncoder from {ckpt_path} ...")
-        return RamanEncoder(ckpt_path, device)
-
-    elif enc_type == "cdae_v2":
-        # New CDAE trained with SG(d=1) + StandardScaler preprocessing
-        if ckpt_path is None:
-            ckpt_path = "./checkpoints/cdae_best.pt"
-        if scaler_path is None:
-            scaler_path = "./checkpoints/cdae_scaler.joblib"
-        if not Path(ckpt_path).exists():
-            raise FileNotFoundError(
-                f"CDAE-V2 checkpoint not found: {ckpt_path}\n"
-                "Run train_autoencoder.py --model cdae first."
+                f"PCA encoder checkpoint not found: {ckpt_path}\n"
+                "Run `python pca_baseline.py` first to fit and save the PCA encoder."
             )
         if not Path(scaler_path).exists():
             raise FileNotFoundError(
-                f"CDAE-V2 scaler not found: {scaler_path}\n"
-                "Run train_autoencoder.py --model cdae first."
+                f"PCA scaler not found: {scaler_path}\n"
+                "Run `python pca_baseline.py` first to fit and save the PCA scaler."
             )
-        from src.data.cdae_encoder import CDAERamanEncoderV2
+        n_components = int(cfg.data.get("raman_latent_dim", 4))
+        from src.data.pca_encoder import PCARamanEncoderV1
         print(
-            f"  Loading CDAERamanEncoderV2 from {ckpt_path} "
-            f"(scaler: {scaler_path}) ..."
+            f"  Loading PCARamanEncoderV1 from {ckpt_path}  "
+            f"(scaler: {scaler_path}, n_components={n_components}) ..."
         )
-        return CDAERamanEncoderV2(ckpt_path, scaler_path, device)
-
-    elif enc_type == "v4":
-        if ckpt_path is None:
-            ckpt_path = "./checkpoints/reakt_fusion_v4_best.pth"
-        if scaler_path is None:
-            scaler_path = "./checkpoints/scaler_raman.pkl"
-        from src.data.reakt_encoders import FusionModelV4Encoder
-        print(f"  Loading FusionModelV4Encoder from {ckpt_path} ...")
-        return FusionModelV4Encoder(ckpt_path, scaler_path, device)
-
-    elif enc_type == "v5":
-        if ckpt_path is None:
-            ckpt_path = "./checkpoints/reakt_coatnet_v5_best.pth"
-        if scaler_path is None:
-            scaler_path = "./checkpoints/scaler_raman.pkl"
-        from src.data.reakt_encoders import CoAtNetV5Encoder
-        print(f"  Loading CoAtNetV5Encoder from {ckpt_path} ...")
-        return CoAtNetV5Encoder(ckpt_path, scaler_path, device)
-
-    else:
-        raise ValueError(
-            f"Unknown raman_encoder_type '{enc_type}'. Choose 'cdae', 'v4', or 'v5'."
+        return PCARamanEncoderV1(
+            pca_model_path=ckpt_path,
+            scaler_path=scaler_path,
+            n_components=n_components,
         )
+
+    if enc_type == "pls_v2":
+        ckpt_path   = ckpt_path   or "./checkpoints/pls_best.joblib"
+        scaler_path = scaler_path or "./checkpoints/pls_scaler.joblib"
+        if not Path(ckpt_path).exists():
+            raise FileNotFoundError(
+                f"PLS encoder checkpoint not found: {ckpt_path}\n"
+                "Run `python pls_baseline.py` first to fit and save the PLS encoder."
+            )
+        if not Path(scaler_path).exists():
+            raise FileNotFoundError(
+                f"PLS scaler not found: {scaler_path}\n"
+                "Run `python pls_baseline.py` first to fit and save the PLS scaler."
+            )
+        n_components = int(cfg.data.get("raman_latent_dim", 4))
+        from src.data.pls_encoder import PLSRamanEncoderV1
+        print(
+            f"  Loading PLSRamanEncoderV1 from {ckpt_path}  "
+            f"(scaler: {scaler_path}, n_components={n_components}) ..."
+        )
+        return PLSRamanEncoderV1(
+            pls_model_path=ckpt_path,
+            scaler_path=scaler_path,
+            n_components=n_components,
+        )
+
+    raise ValueError(
+        f"Unknown raman_encoder_type '{enc_type}'. "
+        f"Choose one of: 'cdae_v2', 'cvae_v2', 'pca_v2', 'pls_v2'."
+    )
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train a PI-LSTM or Neural ODE model.")
+    parser = argparse.ArgumentParser(
+        description="Train a PI-LSTM or Neural ODE benchmark model."
+    )
     parser.add_argument(
         "--model", required=True,
-        choices=[
-            "pi_lstm", "pi_lstm_raman", "pi_lstm_v4", "pi_lstm_v5",
-            "neural_ode", "neural_ode_raman", "neural_ode_v4", "neural_ode_v5",
-            "cdae_pi_lstm",
-        ],
+        choices=MODEL_NAMES,
         help="Which model variant to train.",
     )
     parser.add_argument(

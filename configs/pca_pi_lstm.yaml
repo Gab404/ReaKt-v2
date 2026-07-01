@@ -1,0 +1,78 @@
+# configs/pca_pi_lstm.yaml
+# ========================
+# PCA-PI-LSTM: Physics-Informed LSTM driven exclusively by
+# 4-dimensional PCA scores extracted from Raman spectra.
+#
+# Input pipeline:
+#   raw Raman (2001D) -> SG(d=1, w=15, p=2) -> StandardScaler
+#   -> frozen PCA encoder -> 4D scores -> MinMaxScaler -> LSTM
+#
+# The model predicts [pen_norm, r_net] and enforces:
+#   delta_P ~= k_prod * r_net * dt   (penicillin mass balance)
+#
+# All hyperparameters (model + training) are IDENTICAL to cdae_pi_lstm.yaml
+# so the only difference vs CDAE-PI-LSTM is the Raman encoder:
+#   CDAE-PI-LSTM : non-linear (CNN autoencoder), 64D latent
+#   PCA-PI-LSTM  : linear (PCA),                  4D latent
+#
+# Prerequisite: run `python pca_baseline.py` first to fit and save
+#   ./checkpoints/pca_best.joblib    (fitted sklearn.decomposition.PCA)
+#   ./checkpoints/pca_scaler.joblib  (fitted StandardScaler)
+#
+# Benchmark split: random seed=42, 72 train / 18 FF-val / 10 fault-test
+# Evaluation metric: sparse offline measurement points only (~20/batch)
+
+name: pca_pi_lstm
+
+data:
+  csv_path:           ./100_Batches_IndPenSim_V3.csv
+  use_raman:          true
+  raman_encoder_type: pca_v2                          # selects PCARamanEncoderV1
+  raman_ckpt:         ./checkpoints/pca_best.joblib   # fitted PCA model
+  raman_scaler:       ./checkpoints/pca_scaler.joblib # fitted StandardScaler
+  raman_latent_dim:   4                                # PCA n_components
+
+  # Data split - must match all other benchmark models
+  split_strategy:   random
+  train_frac:       0.80
+  seed:             42
+  min_len:          50
+
+model:
+  hidden_size:      64
+  num_lstm_layers:  2                      # two layers improves temporal credit
+  fc_hidden:        32
+  lstm_dropout:     0.2                    # active only with num_layers > 1
+  k_prod_init:      1.0                    # initial physics scale k_prod
+
+training:
+  seq_len:      24
+  dt:           0.2                        # physical time step (h)
+  batch_size:   64
+  n_epochs:     200
+
+  # Optimizer
+  lr:           1.0e-3                     # network parameters
+  lr_physics:   1.0e-2                     # k_prod (higher, as in standard PINN)
+  weight_decay: 1.0e-4
+
+  # LR scheduler (ReduceLROnPlateau)
+  lr_factor:    0.5
+  lr_patience:  15
+
+  # Early stopping
+  es_patience:  30
+
+  # Gradient clipping
+  grad_clip:    5.0
+
+  # Physics annealing schedule
+  vanilla_mode:          false             # false = use physics loss
+  lambda_physics_start:  0.0
+  lambda_physics_end:    0.1
+  lambda_anneal_delay:   30                # warmup epochs (data loss only)
+  lambda_anneal_epochs:  80                # epochs for linear ramp
+
+output:
+  checkpoint: ./checkpoints/pca_pi_lstm.pt
+  plots_dir:  ./outputs/pca_pi_lstm/

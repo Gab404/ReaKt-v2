@@ -296,7 +296,7 @@ class BaseAlgorithm(ABC):
                 self._history.setdefault(k, []).append(v)
 
             if verbose:
-                star = "★" if improved else " "
+                star = "*" if improved else " "
                 extras_str = "  ".join(
                     f"{k}={v:.4f}" for k, v in list(train_metrics.items())[:3]
                 )
@@ -354,7 +354,7 @@ class BaseAlgorithm(ABC):
             ckpt.update(extra)
 
         torch.save(ckpt, path)
-        print(f"  Checkpoint saved → {path}")
+        print(f"  Checkpoint saved -> {path}")
 
     @classmethod
     def load(cls, path: str, device: torch.device) -> "BaseAlgorithm":

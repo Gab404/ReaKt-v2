@@ -6,25 +6,17 @@ Exposes the REGISTRY and the ``get_algorithm`` factory.
 Importing this package triggers the registration of all algorithm subclasses.
 """
 
-from src.algorithms.base import REGISTRY, BaseAlgorithm, ScalerBundle  # noqa: F401
+from src.algorithms.base       import REGISTRY, BaseAlgorithm, ScalerBundle  # noqa: F401
 
 # Import subclasses — side-effect: each registers itself in REGISTRY
-from src.algorithms.pi_lstm    import PILSTMAlgorithm    # noqa: F401
-from src.algorithms.neural_ode import NeuralODEAlgorithm # noqa: F401
-from src.algorithms.cdae_pi_lstm import CDAEPILSTMAlgorithm  # noqa: F401
-
-# Raman variants reuse the same classes but with different config keys
-# (use_raman=true in their YAML), so they share the same REGISTRY name with
-# a suffix for human-readable identification.  To make them loadable by name
-# we create aliases:
-REGISTRY["pi_lstm_raman"]    = PILSTMAlgorithm
-REGISTRY["neural_ode_raman"] = NeuralODEAlgorithm
-
-# REAKT+ encoder variants — same model classes, different Raman encoder and dim
-REGISTRY["pi_lstm_v4"]    = PILSTMAlgorithm
-REGISTRY["pi_lstm_v5"]    = PILSTMAlgorithm
-REGISTRY["neural_ode_v4"] = NeuralODEAlgorithm
-REGISTRY["neural_ode_v5"] = NeuralODEAlgorithm
+from src.algorithms.pi_lstm           import PILSTMAlgorithm             # noqa: F401
+from src.algorithms.neural_ode        import NeuralODEAlgorithm          # noqa: F401
+from src.algorithms.cdae_pi_lstm      import CDAEPILSTMAlgorithm         # noqa: F401
+from src.algorithms.cvae_pi_lstm      import CVAEPILSTMAlgorithm         # noqa: F401
+from src.algorithms.pca_pi_lstm       import PCAPILSTMAlgorithm          # noqa: F401
+from src.algorithms.pls_pi_lstm       import PLSPILSTMAlgorithm          # noqa: F401
+from src.algorithms.delta_cdae_pi_lstm   import DeltaCDAEPILSTMAlgorithm    # noqa: F401
+from src.algorithms.cdae_process_pi_lstm import CDAEProcessPILSTMAlgorithm  # noqa: F401
 
 
 def get_algorithm(name: str) -> type:
@@ -34,9 +26,10 @@ def get_algorithm(name: str) -> type:
     Parameters
     ----------
     name : str
-        One of: ``"pi_lstm"``, ``"pi_lstm_raman"``, ``"pi_lstm_v4"``,
-        ``"pi_lstm_v5"``, ``"neural_ode"``, ``"neural_ode_raman"``,
-        ``"neural_ode_v4"``, ``"neural_ode_v5"``, ``"cdae_pi_lstm"``
+        One of: ``"pi_lstm"``, ``"neural_ode"``,
+        ``"cdae_pi_lstm"``, ``"cvae_pi_lstm"``,
+        ``"pca_pi_lstm"``, ``"pls_pi_lstm"``,
+        ``"delta_cdae_pi_lstm"``, ``"cdae_process_pi_lstm"``.
 
     Raises
     ------
@@ -57,5 +50,10 @@ __all__ = [
     "PILSTMAlgorithm",
     "NeuralODEAlgorithm",
     "CDAEPILSTMAlgorithm",
+    "CVAEPILSTMAlgorithm",
+    "PCAPILSTMAlgorithm",
+    "PLSPILSTMAlgorithm",
+    "DeltaCDAEPILSTMAlgorithm",
+    "CDAEProcessPILSTMAlgorithm",
     "get_algorithm",
 ]

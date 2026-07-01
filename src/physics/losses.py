@@ -176,3 +176,77 @@ def compute_cdae_pinn_loss(
         "k_prod":     float(model.k_prod.item()),
     }
     return loss, loss_dict
+
+
+# ── ─────────────────────────────────────────────────────────────────────────
+# Delta-CDAE-PI-LSTM loss  (ΔP prediction, simplified mass-balance physics)
+# ── ─────────────────────────────────────────────────────────────────────────
+
+def compute_delta_cdae_pinn_loss(
+    model,                  # DeltaCDAEPILSTMModel — provides model.k_prod
+    pred:           torch.Tensor,   # (B, T, 2)  [:,:,0]=delta_pen_norm  [:,:,1]=r_net
+    y_delta_pen_norm: torch.Tensor, # (B, T)     normalised ΔP targets
+    dt_n:           float,          # normalised time step
+    lambda_physics: float = 0.0,
+) -> Tuple[torch.Tensor, Dict[str, float]]:
+    """
+    Physics-Informed loss for the Delta-CDAE-PI-LSTM.
+
+    The model outputs TWO values per time step:
+      delta_pen_norm — predicted normalised Penicillin increment  (linear, ∈(−∞,+∞))
+      r_net          — predicted net volumetric production rate    (unbounded)
+
+    Loss components
+    ---------------
+    Data loss   : MSE(delta_pen_norm_pred, y_delta_pen_norm)      (NaN-masked)
+    Physics loss: MSE(delta_pen_norm_pred, k_prod · r_net · dt_n)
+
+      The physics loss directly enforces the simplified penicillin mass balance:
+          ΔP/dt ≈ k_prod · r_net
+      Because the model output IS the increment ΔP, no finite-differencing of a
+      predicted concentration trajectory is required.  The constraint is tighter
+      than in the concentration-prediction variant (compute_cdae_pinn_loss).
+
+    Parameters
+    ----------
+    model             : DeltaCDAEPILSTMModel (duck-typed for k_prod attribute)
+    pred              : (B, T, 2) model output
+    y_delta_pen_norm  : (B, T) normalised Penicillin increment targets
+    dt_n              : normalised time step (dt_physical / time_range)
+    lambda_physics    : weight for physics residual term
+
+    Returns
+    -------
+    loss      : scalar total loss
+    loss_dict : breakdown dict for logging
+    """
+    delta_pred = pred[:, :, 0]   # (B, T)  predicted ΔP_norm
+    r_net      = pred[:, :, 1]   # (B, T)  predicted production rate
+
+    # ── Data loss (NaN-masked) ────────────────────────────────────────────────
+    valid_delta = ~torch.isnan(y_delta_pen_norm)
+    l_data = (
+        F.mse_loss(delta_pred[valid_delta], y_delta_pen_norm[valid_delta])
+        if valid_delta.any()
+        else pred.new_tensor(0.0)
+    )
+
+    # ── Physics residual — direct mass balance on ΔP ─────────────────────────
+    # The model directly outputs ΔP_norm; the physics loss enforces:
+    #   delta_pred ≈ k_prod · r_net · dt_n  (all T time steps, no shifting)
+    if lambda_physics > 0.0:
+        k_prod  = model.k_prod                       # scalar ≥ 0
+        dP_phy  = k_prod * r_net * dt_n              # (B, T)
+        l_phys  = F.mse_loss(delta_pred, dP_phy)
+    else:
+        l_phys  = pred.new_tensor(0.0)
+
+    loss = l_data + lambda_physics * l_phys
+
+    loss_dict = {
+        "loss":       float(loss.item()),
+        "loss_data":  float(l_data.item()),
+        "loss_phys":  float((lambda_physics * l_phys).item()),
+        "k_prod":     float(model.k_prod.item()),
+    }
+    return loss, loss_dict
